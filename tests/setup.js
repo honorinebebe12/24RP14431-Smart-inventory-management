@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const db = require('./database');
+const db = require('../database');
 
 // Middleware for parsing JSON bodies
 app.use(express.json());
@@ -115,13 +115,5 @@ app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ message: 'Something went wrong!' });
 });
-
-const PORT = process.env.PORT || 3000;
-
-if (require.main === module) {
-    app.listen(PORT, () => {
-        console.log(`Server is running on port ${PORT}`);
-    });
-}
 
 module.exports = app;
