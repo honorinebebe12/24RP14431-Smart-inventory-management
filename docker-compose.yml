@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - db
+
+  db:
+    image: keinos/sqlite3:latest
+    volumes:
+      - sqlite_data:/data
+    command: sqlite3 /data/inventory.db
+
+volumes:
+  sqlite_data:
+    driver: local
