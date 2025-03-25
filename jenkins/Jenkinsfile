@@ -1,0 +1,69 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_REGISTRY = 'your-registry'
+        BACKEND_IMAGE = '${DOCKER_REGISTRY}/backend-api'
+        MICROSERVICE_IMAGE = '${DOCKER_REGISTRY}/microservice'
+        KUBE_CONFIG = credentials('kubernetes-config')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Backend') {
+            steps {
+                dir('backend') {
+                    sh 'docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} .'
+                }
+            }
+        }
+
+        stage('Build Microservice') {
+            steps {
+                dir('microservice') {
+                    sh 'docker build -t ${MICROSERVICE_IMAGE}:${BUILD_NUMBER} .'
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh 'npm install'
+                sh 'npm test'
+            }
+        }
+
+        stage('Push Images') {
+            steps {
+                withDockerRegistry([credentialsId: 'docker-creds', url: "https://${DOCKER_REGISTRY}"]) {
+                    sh "docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}"
+                    sh "docker push ${MICROSERVICE_IMAGE}:${BUILD_NUMBER}"
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                withKubeConfig([credentialsId: 'kubernetes-config']) {
+                    sh "kubectl apply -f k8s/"
+                    sh "kubectl set image deployment/backend-api backend-api=${BACKEND_IMAGE}:${BUILD_NUMBER}"
+                    sh "kubectl set image deployment/microservice microservice=${MICROSERVICE_IMAGE}:${BUILD_NUMBER}"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
